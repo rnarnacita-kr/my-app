@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "questions": [
+    {
+      "id": "preset-monthly-order-vs-ship",
+      "name": "월별 주문 매출 vs 출고 매출",
+      "question": "월별 주문 기준 매출과 출고 기준 매출을 나란히 보여줘. 출고 기준 매출은 출고 수량 × 주문 단가를 출고일의 월로 묶어서 구해줘",
+      "metrics": [
+        "주문 매출",
+        "출고 매출"
+      ],
+      "note": [
+        "주문 매출은 주문일의 월로 묶는다.",
+        "출고 매출은 출고 수량 × 주문 단가를 출고일의 월로 묶는다.",
+        "월말 주문은 다음 달에 출고되므로 두 값이 어긋난다."
+      ],
+      "sql": "WITH ord AS (\n  SELECT date_trunc('month', order_date) AS m, SUM(sales_amount) AS v\n  FROM mall_orders\n  GROUP BY 1\n), shp AS (\n  SELECT date_trunc('month', s.ship_date) AS m, SUM(s.ship_qty * o.unit_price) AS v\n  FROM shipments s\n  JOIN mall_orders o ON s.order_no = o.order_no AND s.line_no = o.line_no\n  GROUP BY 1\n)\nSELECT strftime(COALESCE(ord.m, shp.m), '%Y-%m') AS \"월\",\n       COALESCE(ord.v, 0) AS \"주문 매출\",\n       COALESCE(shp.v, 0) AS \"출고 매출\",\n       COALESCE(ord.v, 0) - COALESCE(shp.v, 0) AS \"차이(주문-출고)\"\nFROM ord FULL OUTER JOIN shp ON ord.m = shp.m\nORDER BY 1"
+    },
+    {
+      "id": "preset-unshipped-ratio-by-mall-month",
+      "name": "쇼핑몰별 · 월별 미출고 비율",
+      "question": "쇼핑몰별로 주문 수량 대비 출고되지 않은 수량의 비율을 월별로 보여줘",
+      "metrics": [
+        "미출고 수량"
+      ],
+      "note": [
+        "월은 주문일 기준이다.",
+        "미출고 수량 = 주문 수량 − 출고 수량 (출고 행이 없으면 0).",
+        "출고 데이터가 2025-12-31에서 끝나, 2025-12 주문의 비율은 높게 나온다."
+      ],
+      "sql": "SELECT strftime(date_trunc('month', o.order_date), '%Y-%m') AS \"월\",\n       o.mall AS \"쇼핑몰\",\n       SUM(o.qty) AS \"주문 수량\",\n       SUM(COALESCE(s.ship_qty, 0)) AS \"출고 수량\",\n       SUM(o.qty - COALESCE(s.ship_qty, 0)) AS \"미출고 수량\",\n       ROUND(100.0 * SUM(o.qty - COALESCE(s.ship_qty, 0)) / SUM(o.qty), 2) AS \"미출고 비율(%)\"\nFROM mall_orders o\nLEFT JOIN shipments s ON s.order_no = o.order_no AND s.line_no = o.line_no\nGROUP BY 1, 2\nORDER BY 1, 2"
+    },
+    {
+      "id": "preset-set-margin",
+      "name": "세트 상품별 환산 원가와 마진",
+      "question": "세트 상품별로 정가에서 구성 단품의 원가를 수량대로 합친 환산 원가를 뺀 마진을 보여줘",
+      "metrics": [
+        "세트 환산 원가",
+        "마진"
+      ],
+      "note": [
+        "세트 환산 원가 = 구성 단품 unit_cost × qty 합 (데이터 사전 그대로).",
+        "마진은 질문대로 정가(list_price) 기준이다.",
+        "데이터 사전의 마진은 판매 단가 기준이라, 판매 단가로 보려면 mall_orders 와 묶어야 한다."
+      ],
+      "sql": "WITH cost AS (\n  SELECT sc.set_sku, SUM(c.unit_cost * sc.qty) AS set_cost\n  FROM set_components sc\n  JOIN products c ON c.sku = sc.component_sku\n  GROUP BY sc.set_sku\n)\nSELECT p.sku AS \"세트 코드\",\n       p.product_name AS \"세트명\",\n       p.list_price AS \"정가\",\n       cost.set_cost AS \"세트 환산 원가\",\n       p.list_price - cost.set_cost AS \"마진\",\n       ROUND(100.0 * (p.list_price - cost.set_cost) / p.list_price, 2) AS \"마진율(%)\"\nFROM products p\nJOIN cost ON cost.set_sku = p.sku\nWHERE p.is_set = 1\nORDER BY p.sku"
+    },
+    {
+      "id": "preset-fee-gap-by-month-mall",
+      "name": "2025년 월별 · 쇼핑몰별 수수료 차액",
+      "question": "2025년 월별·쇼핑몰별 출고분 결제금액, 예상 수수료, 실제 차감액, 수수료 차액을 비교해 줘. 실제 차감액은 출고분 결제금액에서 실제 입금액을 차감해 계산하고, 차액이 발생한 쇼핑몰과 월을 보여줘.",
+      "metrics": [
+        "입금률"
+      ],
+      "note": [
+        "월은 입금일(정산월) 기준이고, 입금된 출고분만 센다.",
+        "출고분 결제금액 = 결제 금액 × 출고 수량 ÷ 주문 수량.",
+        "예상 수수료 = 출고분 결제금액 × 쇼핑몰 수수료율.",
+        "수수료율: 자사몰 3% · 오픈마켓A 11% · 오픈마켓B 12% · 소셜커머스 20% · 종합몰 13% (데이터 사전 그대로).",
+        "실제 차감액 = 출고분 결제금액 − 실제 입금액.",
+        "수수료 차액 = 실제 차감액 − 예상 수수료 (+면 예상보다 더 떼임).",
+        "실제 공제 차이는 «차액 거래 수»(거래 하나에서 10원 이상 차이)로 본다.",
+        "차액 거래 수가 0인 달의 작은 수수료 차액(월 −126 ~ +367원)은 반올림 끝전이다.",
+        "쇼핑몰은 입금액을 10원 단위로 은행가 반올림(끝이 5원이면 짝수 쪽)해 보낸다. 2025년 정상 거래 33,862건 모두 이 규칙으로 재현된다.",
+        "거래당 끝전은 최대 ±5원이고, 월 수수료 차액은 그 끝전의 합이다.",
+        "소셜커머스 1~6월이 0원인 것은 100원 단위 결제금액 × 80%가 늘 10원 단위로 떨어져 끝전이 없기 때문이다."
+      ],
+      "alert": {
+        "where": {
+          "col": "차액 거래 수",
+          "op": ">",
+          "value": 0
+        },
+        "min_rows": 1,
+        "sum_col": "수수료 차액",
+        "list_cols": [
+          "쇼핑몰",
+          "월"
+        ],
+        "message": "수수료 차액이 발생한 쇼핑몰·월이 {rows}개 있습니다 (수수료 차액 합계 {sum}원): {list}"
+      },
+      "sql": "WITH fee(mall, rate) AS (\n  VALUES ('자사몰', 0.03), ('오픈마켓A', 0.11), ('오픈마켓B', 0.12), ('소셜커머스', 0.20), ('종합몰', 0.13)\n), t AS (\n  SELECT o.mall, st.settle_date,\n         o.payment_amount * s.ship_qty / o.qty AS shipped_pay,\n         f.rate,\n         st.deposit_amount\n  FROM shipments s\n  JOIN mall_orders o ON o.order_no = s.order_no AND o.line_no = s.line_no\n  JOIN fee f ON f.mall = o.mall\n  JOIN mall_settlements st ON st.order_no = s.order_no AND st.line_no = s.line_no\n  WHERE st.settle_date >= DATE '2025-01-01' AND st.settle_date < DATE '2026-01-01'\n)\nSELECT strftime(settle_date, '%Y-%m') AS \"월\",\n       mall AS \"쇼핑몰\",\n       ROUND(SUM(shipped_pay)) AS \"출고분 결제금액\",\n       ROUND(SUM(shipped_pay * rate)) AS \"예상 수수료\",\n       ROUND(SUM(shipped_pay - deposit_amount)) AS \"실제 차감액\",\n       ROUND(SUM(shipped_pay - deposit_amount)) - ROUND(SUM(shipped_pay * rate)) AS \"수수료 차액\",\n       COUNT(*) FILTER (WHERE abs(shipped_pay - deposit_amount - shipped_pay * rate) >= 10) AS \"차액 거래 수\"\nFROM t\nGROUP BY 1, 2\nORDER BY 1, 2"
+    },
+    {
+      "id": "preset-settlement-mismatch",
+      "name": "예상 정산액과 실제 입금액이 다른 거래",
+      "question": "예상 정산액과 실제 입금액이 다른 거래를 찾아줘",
+      "metrics": [
+        "입금률"
+      ],
+      "note": [
+        "예상 정산액 = 출고분 결제금액 − 수수료액.",
+        "출고분 결제금액 = 결제 금액 × 출고 수량 ÷ 주문 수량.",
+        "수수료액 = 출고분 결제금액 × 쇼핑몰 수수료율.",
+        "수수료율: 자사몰 3% · 오픈마켓A 11% · 오픈마켓B 12% · 소셜커머스 20% · 종합몰 13% (데이터 사전 그대로).",
+        "차이 = 실제 입금액 − 예상 정산액.",
+        "입금액은 10원 단위 반올림이라, 차이 10원 미만은 같은 것으로 본다.",
+        "입금일이 빈칸이고 실제 입금액이 0이면, 입금 예정일(출고일 8일 뒤, 주말이면 월요일)이 지났는데 입금이 없는 거래다."
+      ],
+      "sql": "WITH fee(mall, rate) AS (\n  VALUES ('자사몰', 0.03), ('오픈마켓A', 0.11), ('오픈마켓B', 0.12), ('소셜커머스', 0.20), ('종합몰', 0.13)\n), cutoff AS (\n  SELECT max(settle_date) AS last_settle FROM mall_settlements\n), shipped AS (\n  SELECT o.order_no, o.line_no, o.mall,\n         o.payment_amount * s.ship_qty / o.qty AS shipped_pay,\n         f.rate,\n         o.payment_amount * s.ship_qty / o.qty * (1 - f.rate) AS expected,\n         CAST(s.ship_date + 8 AS DATE) + CASE isodow(CAST(s.ship_date + 8 AS DATE)) WHEN 6 THEN 2 WHEN 7 THEN 1 ELSE 0 END AS due_date\n  FROM shipments s\n  JOIN mall_orders o ON o.order_no = s.order_no AND o.line_no = s.line_no\n  JOIN fee f ON f.mall = o.mall\n)\nSELECT sh.order_no || '-' || sh.line_no AS \"주문\",\n       sh.mall AS \"쇼핑몰\",\n       st.settle_date AS \"입금일\",\n       ROUND(sh.expected) AS \"예상 정산액\",\n       ROUND(sh.shipped_pay * sh.rate) AS \"수수료액\",\n       COALESCE(st.deposit_amount, 0) AS \"실제 입금액\",\n       COALESCE(st.deposit_amount, 0) - ROUND(sh.expected) AS \"차이\"\nFROM shipped sh\nCROSS JOIN cutoff\nLEFT JOIN mall_settlements st ON st.order_no = sh.order_no AND st.line_no = sh.line_no\nWHERE (st.deposit_amount IS NOT NULL AND abs(st.deposit_amount - sh.expected) >= 10)\n   OR (st.deposit_amount IS NULL AND sh.due_date <= cutoff.last_settle)\nORDER BY COALESCE(st.settle_date, sh.due_date), sh.order_no, sh.line_no",
+      "alert": {
+        "min_rows": 1,
+        "sum_col": "차이",
+        "message": "예상 정산액과 실제 입금액이 다른 거래가 {rows}건 있습니다 (차이 합계 {sum}원). 쇼핑몰 정산 명세서와 대조해 확인하세요."
+      }
+    }
+  ]
+}

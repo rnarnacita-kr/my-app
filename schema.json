@@ -1,0 +1,101 @@
+{
+  "source": "docs/데이터_사전.md",
+  "description": "온라인 쇼핑몰 다섯 곳에서 생활용품·식품·뷰티·건강기능식품·주방·반려동물 상품을 파는 회사의 주문·출고·정산 데이터(합성). 재무팀은 주문을 출고와 맞춰 실제 출고 수량으로 매출을 확정하고, 쇼핑몰 정산 입금과 대조하며, 세트 상품은 단품으로 환산해 원가와 마진을 계산한다.",
+  "period": "2024-07-01 ~ 2025-12-31 (18개월)",
+  "sql_dialect": "DuckDB",
+  "tables": [
+    {
+      "name": "products",
+      "grain": "상품 1개 (단품 120개 + 세트 24개)",
+      "row_count": 144,
+      "key": ["sku"],
+      "columns": [
+        {"name": "sku", "type": "VARCHAR", "meaning": "상품 코드. 단품은 S0001 형태, 세트는 SET01 형태", "examples": ["S0001", "SET18"]},
+        {"name": "product_name", "type": "VARCHAR", "meaning": "표준 상품명", "examples": ["세탁세제 대", "세탁세제 250ml"]},
+        {"name": "category", "type": "VARCHAR", "meaning": "카테고리 (6개)", "examples": ["생활용품", "식품", "뷰티", "건강기능식품", "주방", "반려동물"]},
+        {"name": "list_price", "type": "BIGINT", "meaning": "정가(원)", "examples": [11500, 28000]},
+        {"name": "unit_cost", "type": "DOUBLE", "meaning": "단품 원가(원). 세트는 결측값(NULL) — set_components로 환산", "examples": [6700.0, 17600.0, null]},
+        {"name": "is_set", "type": "BIGINT", "meaning": "1이면 세트 상품, 0이면 단품", "examples": [0, 1]}
+      ]
+    },
+    {
+      "name": "set_components",
+      "grain": "세트 1개의 구성 단품 1개",
+      "row_count": 71,
+      "key": ["set_sku", "component_sku"],
+      "columns": [
+        {"name": "set_sku", "type": "VARCHAR", "meaning": "세트 코드 (→ products.sku)", "examples": ["SET01"]},
+        {"name": "component_sku", "type": "VARCHAR", "meaning": "구성 단품 코드 (→ products.sku)", "examples": ["S0013", "S0011"]},
+        {"name": "qty", "type": "BIGINT", "meaning": "세트 하나에 들어가는 이 단품의 수량", "examples": [1, 2]}
+      ]
+    },
+    {
+      "name": "mall_orders",
+      "grain": "쇼핑몰 주문의 항목 1개(상품 1종)",
+      "row_count": 57530,
+      "key": ["order_no", "line_no"],
+      "columns": [
+        {"name": "order_no", "type": "VARCHAR", "meaning": "주문 번호", "examples": ["OD0000001"]},
+        {"name": "line_no", "type": "BIGINT", "meaning": "주문 안의 항목 번호", "examples": [1, 2]},
+        {"name": "mall", "type": "VARCHAR", "meaning": "쇼핑몰 이름 (5개)", "examples": ["자사몰", "오픈마켓A", "오픈마켓B", "소셜커머스", "종합몰"]},
+        {"name": "order_date", "type": "DATE", "meaning": "주문일", "examples": ["2024-07-01"]},
+        {"name": "mall_product_name", "type": "VARCHAR", "meaning": "쇼핑몰이 쓰는 상품명. 쇼핑몰마다 표기가 달라 조인 키로 쓰지 않는다", "examples": ["간식 60개입 특가"]},
+        {"name": "sku", "type": "VARCHAR", "meaning": "상품 코드 (조인 키 → products.sku)", "examples": ["S0105", "SET18"]},
+        {"name": "qty", "type": "BIGINT", "meaning": "주문 수량", "examples": [1, 3]},
+        {"name": "unit_price", "type": "BIGINT", "meaning": "판매 단가(원)", "examples": [45900, 88400]},
+        {"name": "sales_amount", "type": "BIGINT", "meaning": "판매 금액 = 단가 × 수량", "examples": [91800, 265200]},
+        {"name": "payment_amount", "type": "BIGINT", "meaning": "결제 금액 = 판매 금액 − 쿠폰 할인", "examples": [91800, 262200]}
+      ]
+    },
+    {
+      "name": "shipments",
+      "grain": "출고 1건 (주문 항목 하나에 대한 창고 출고)",
+      "row_count": 54407,
+      "key": ["ship_id"],
+      "columns": [
+        {"name": "ship_id", "type": "VARCHAR", "meaning": "출고 번호", "examples": ["SH0000001"]},
+        {"name": "order_no", "type": "VARCHAR", "meaning": "주문 번호 (order_no + line_no로 mall_orders와 연결)", "examples": ["OD0000002"]},
+        {"name": "line_no", "type": "BIGINT", "meaning": "주문 항목 번호", "examples": [1]},
+        {"name": "sku", "type": "VARCHAR", "meaning": "출고한 상품 코드", "examples": ["S0105", "SET13"]},
+        {"name": "ship_date", "type": "DATE", "meaning": "출고일", "examples": ["2024-07-02"]},
+        {"name": "ship_qty", "type": "BIGINT", "meaning": "출고 수량. 주문 수량보다 적을 수 있음(부분 출고)", "examples": [1, 2]}
+      ]
+    },
+    {
+      "name": "mall_settlements",
+      "grain": "쇼핑몰이 입금한 정산 1건 (출고 한 건에 대한 입금)",
+      "row_count": 53570,
+      "key": ["settle_id"],
+      "columns": [
+        {"name": "settle_id", "type": "VARCHAR", "meaning": "정산 번호", "examples": ["ST0000001"]},
+        {"name": "order_no", "type": "VARCHAR", "meaning": "주문 번호 (order_no + line_no로 mall_orders와 연결)", "examples": ["OD0000002"]},
+        {"name": "line_no", "type": "BIGINT", "meaning": "주문 항목 번호", "examples": [1]},
+        {"name": "mall", "type": "VARCHAR", "meaning": "입금한 쇼핑몰", "examples": ["소셜커머스", "오픈마켓A"]},
+        {"name": "settle_date", "type": "DATE", "meaning": "입금일", "examples": ["2024-07-10"]},
+        {"name": "deposit_amount", "type": "BIGINT", "meaning": "입금액(원)", "examples": [73440, 100570]}
+      ]
+    }
+  ],
+  "relationships": [
+    "mall_orders 1 : 0~1 shipments (order_no + line_no). 출고가 없는 주문 항목이 있다",
+    "shipments 1 : 0~1 mall_settlements (order_no + line_no)",
+    "mall_orders.sku → products.sku",
+    "set_components.set_sku → products.sku (세트), set_components.component_sku → products.sku (단품)"
+  ],
+  "metrics": [
+    {"name": "주문 매출", "definition": "mall_orders.sales_amount의 합. 주문일(order_date) 기준"},
+    {"name": "출고 매출", "definition": "shipments.ship_qty × mall_orders.unit_price의 합 (order_no + line_no로 조인). 출고일(ship_date) 기준으로 월을 나눈다. 회사의 확정 매출은 출고 매출이다"},
+    {"name": "미출고 수량", "definition": "주문 수량 − 출고 수량 (출고 행이 없으면 출고 수량은 0)"},
+    {"name": "세트 환산 원가", "definition": "set_components의 구성 단품 unit_cost × qty 합"},
+    {"name": "마진", "definition": "판매 단가 − 원가 (세트는 세트 환산 원가). 쇼핑몰 수수료는 포함하지 않는다"},
+    {"name": "입금률", "definition": "입금액 ÷ 결제금액 중 출고된 분량. 쇼핑몰 수수료율만큼 100%보다 낮은 것이 정상"}
+  ],
+  "rules": [
+    "출고는 주문 다음 날부터 1~3일 걸린다. 토·일에는 출고하지 않아 월요일로 넘어간다. 월말 주문은 다음 달에 출고된다",
+    "12월 26일부터 말일까지는 연말 프로모션 기간이라 출고가 3~8일 걸린다",
+    "쇼핑몰 수수료율: 자사몰 3% · 오픈마켓A 11% · 오픈마켓B 12% · 소셜커머스 20% · 종합몰 13%",
+    "정산은 출고일 8일 뒤(주말이면 월요일)에 입금된다",
+    "주문 취소와 품절은 shipments에 행이 없는 것으로만 나타난다. 취소 사유 컬럼은 없다",
+    "단가·쇼핑몰은 항상 mall_orders에서 가져온다. mall_product_name은 조인 키로 쓰지 않는다"
+  ]
+}

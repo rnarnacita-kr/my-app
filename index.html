@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>매출 대사 SQL</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>매출 대사 SQL</h1>
+    <span id="db-status" class="status">데이터 준비 중…</span>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="saved">준비된 질문</button>
+    <button role="tab" data-tab="ask" class="active">묻기</button>
+    <button role="tab" data-tab="tables">테이블</button>
+    <button role="tab" data-tab="files">내 파일</button>
+  </nav>
+
+  <main>
+    <section id="tab-saved" class="panel" hidden>
+      <div id="saved-list"><p class="muted">데이터 준비 중…</p></div>
+    </section>
+
+    <section id="tab-ask" class="panel">
+      <label class="lbl" for="question">질문</label>
+      <div class="row">
+        <input id="question" type="text" placeholder="예: 2025년 12월 주문 기준 매출과 출고 기준 매출 알려줘" autocomplete="off">
+        <button id="btn-ask" class="primary" disabled>SQL 만들기</button>
+      </div>
+
+      <label class="lbl" for="sql">SQL <small>(직접 고쳐서 실행해도 같은 읽기 전용 검사를 거칩니다)</small></label>
+      <textarea id="sql" rows="9" spellcheck="false" placeholder="SELECT …"></textarea>
+      <div class="row">
+        <button id="btn-run" disabled>실행</button>
+        <span id="msg" class="msg"></span>
+      </div>
+      <div class="row">
+        <input id="save-name" type="text" placeholder="이름을 붙여 저장 (예: 12월 주문·출고 매출)" autocomplete="off">
+        <button id="btn-save" disabled>이름 붙여 저장</button>
+        <span id="save-msg" class="msg"></span>
+      </div>
+
+      <div id="alert"></div>
+      <div id="result" class="result"></div>
+      <div id="basis" class="why" hidden></div>
+      <div id="drill" class="why" hidden></div>
+    </section>
+
+    <section id="tab-tables" class="panel" hidden>
+      <div id="table-list"><p class="muted">데이터 준비 중…</p></div>
+    </section>
+
+    <section id="tab-files" class="panel" hidden>
+      <label id="dropzone" class="dropzone" for="file-input">
+        <strong>CSV · 엑셀(xlsx) 파일을 여기에 끌어다 놓거나 눌러서 고르세요</strong>
+        <span class="muted small">파일 이름(확장자 뺀 것)이 테이블 이름이 됩니다. 같은 이름이면 새 파일로 바꿉니다.
+          파일은 이 브라우저 안에서만 읽고, 새로고침하면 사라집니다.</span>
+        <input id="file-input" type="file" accept=".csv,.xlsx" multiple hidden>
+      </label>
+      <div id="upload-list"></div>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

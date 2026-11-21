@@ -1,0 +1,21 @@
+{
+  "note": "읽기 전용 SQL 검사 규칙. js/sqlguard.js 와 api/_sqlguard.py 가 같은 목록을 쓴다.",
+  "max_length": 20000,
+  "allowed_start": ["SELECT", "WITH"],
+  "forbidden_keywords": [
+    "INSERT", "UPDATE", "DELETE", "MERGE", "UPSERT", "CREATE", "DROP", "ALTER", "TRUNCATE",
+    "COPY", "ATTACH", "DETACH", "INSTALL", "LOAD", "PRAGMA", "SET", "RESET", "EXPORT", "IMPORT",
+    "CALL", "USE", "VACUUM", "CHECKPOINT", "GRANT", "REVOKE", "BEGIN", "COMMIT", "ROLLBACK",
+    "TRANSACTION", "PREPARE", "EXECUTE", "DEALLOCATE"
+  ],
+  "forbidden_functions": [
+    "read_csv", "read_csv_auto", "csv_scan", "sniff_csv",
+    "read_parquet", "parquet_scan", "parquet_metadata", "parquet_schema",
+    "read_json", "read_json_auto", "read_json_objects", "read_ndjson", "read_ndjson_auto",
+    "read_ndjson_objects", "json_scan", "read_text", "read_blob", "read_xlsx", "glob",
+    "sqlite_scan", "sqlite_attach", "postgres_scan", "postgres_query", "mysql_scan", "mysql_query",
+    "iceberg_scan", "delta_scan", "query", "query_table", "getenv",
+    "duckdb_secrets", "which_secret", "load_aws_credentials", "http_get", "http_post"
+  ],
+  "allowed_table_functions": ["range", "generate_series", "unnest"]
+}

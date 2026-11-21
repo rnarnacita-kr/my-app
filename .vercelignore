@@ -1,0 +1,5 @@
+.env
+__pycache__/
+tools/
+다음달/
+.vercel/

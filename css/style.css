@@ -1,0 +1,241 @@
+/* ── 디자인 토큰 ─────────────────────────────────── */
+:root {
+  color-scheme: light;
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-hover: #FFF9F8;
+  --border: #E5E9EF;
+  --text: #253246;
+  --muted: #69788A;
+  --accent: #E65D56;
+  --accent-hover: #D94B44;
+  --warning: #D98B36;
+  --success: #16834A;
+  --danger: #D83F4F;
+  --radius: 12px;
+  --code-bg: #F2F5F9;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard", "Noto Sans KR",
+    "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+/* ── 카드 (준비된 질문 · 테이블 · 올린 파일) ─────────── */
+.card, .question-card, .qcard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  margin: 14px 0;
+  box-shadow: 0 4px 18px rgba(31,45,61,.035);
+  transition: .2s ease;
+}
+
+.card:hover, .question-card:hover, .qcard:hover {
+  border-color: #F0B3AE;
+  background: var(--surface-hover);
+  box-shadow: 0 8px 24px rgba(31,45,61,.07);
+}
+
+.card h3, .question-card h3, .qcard h3 {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.description, .hint, small, .muted {
+  color: var(--muted);
+}
+
+/* ── 단추 ───────────────────────────────────────── */
+.btn-primary, .recalculate, button.primary {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #FFFFFF;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.btn-primary:hover, .recalculate:hover, button.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-secondary, button {
+  font: inherit;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 15px;
+  cursor: pointer;
+}
+button.primary { font-weight: 650; }
+button:not(.primary):hover:not(:disabled) { border-color: #F0B3AE; }
+button:disabled { opacity: .5; cursor: default; }
+
+/* ── 경고 · 상태 ─────────────────────────────────── */
+.warning, .msg.warn, .warnlist {
+  color: #A96A21;
+  background: #FFF6E8;
+  border: 1px solid #F2D8AE;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.warnlist { padding-left: 28px; margin: 12px 0 0; }
+
+.status-ready, .status.ok {
+  color: var(--success);
+  background: #E8F7EF;
+  border-radius: 999px;
+  padding: 5px 11px;
+}
+
+/* ── 탭 ─────────────────────────────────────────── */
+.tabs {
+  display: flex; gap: 4px; padding: 8px 16px 0; max-width: 1100px; margin: 0 auto;
+  border-bottom: 1px solid var(--border); overflow-x: auto;
+}
+.tabs button, .tab {
+  border: 0; border-radius: 0; background: none; color: var(--muted); font-weight: 600;
+  padding: 10px 14px; border-bottom: 2px solid transparent; white-space: nowrap;
+}
+.tab.active, .tab[aria-selected="true"], .tabs button.active {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+
+pre {
+  background: #F2F5F9;
+  color: #334155;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+/* ── 머리 · 판 ──────────────────────────────────── */
+.top {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 20px 16px 6px; max-width: 1100px; margin: 0 auto;
+}
+.top h1 { font-size: 20px; margin: 0; }
+.status { color: var(--muted); font-size: 13px; }
+.status.err { color: var(--danger); }
+
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 22px; box-shadow: 0 4px 18px rgba(31,45,61,.035);
+}
+.placeholder { color: var(--muted); margin: 0; }
+
+/* ── 입력 ───────────────────────────────────────── */
+.lbl { display: block; font-weight: 700; margin: 14px 0 6px; }
+.lbl:first-child { margin-top: 0; }
+.lbl small { font-weight: 400; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.row:first-of-type { margin-top: 0; }
+input[type=text], textarea {
+  width: 100%; font: inherit; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px;
+}
+input[type=text]:focus, textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(230,93,86,.12);
+}
+.row input[type=text] { flex: 1 1 280px; width: auto; }
+textarea { font-family: ui-monospace, Consolas, monospace; font-size: 13px; resize: vertical; }
+
+.msg { font-size: 13px; color: var(--muted); }
+.msg.err { color: var(--danger); }
+.msg.ok { color: var(--success); }
+.msg.warn { margin: 8px 0; }
+.msg.big { font-size: 15px; font-weight: 700; color: var(--text); margin: 8px 0; }
+
+/* ── 결과 표 ────────────────────────────────────── */
+.result { margin-top: 16px; }
+.tablewrap { overflow-x: auto; }
+.result table, .why table, .qresult table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.result th, .result td, .why th, .why td, .qresult th, .qresult td {
+  border-bottom: 1px solid var(--border); padding: 7px 10px; text-align: left; white-space: nowrap;
+}
+.result th, .why th, .qresult th { background: var(--code-bg); color: var(--muted); font-weight: 600; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+/* ── ① 산출 근거 · ② 원인 한 단계 ─────────────────── */
+.why { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); }
+.why h3 { font-size: 16px; font-weight: 700; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.badge { font-size: 12px; font-weight: 650; padding: 3px 10px; border-radius: 999px; }
+.badge.warn { color: #A96A21; background: #FFF6E8; }
+.badge.ok { color: var(--success); background: #E8F7EF; }
+dl.basis { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; }
+dl.basis dt { color: var(--muted); }
+dl.basis dd { margin: 0; }
+.chip {
+  display: inline-block; background: var(--code-bg); border-radius: 6px;
+  padding: 1px 7px; margin: 0 4px 3px 0; font-size: 13px;
+}
+.note { margin: 0 0 8px; }
+.sqlblock { margin: 8px 0; }
+.sqlblock summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.sqlblock pre { font-size: 12px; white-space: pre-wrap; margin: 8px 0 0; }
+
+/* ── 준비된 질문 ─────────────────────────────────── */
+.savedbar { margin-bottom: 4px; }
+.qhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.qhead .row { margin-top: 0; }
+.qtext { margin: 8px 0 2px; }
+.small { font-size: 13px; margin: 2px 0 4px; }
+h3.group { font-size: 14px; color: var(--muted); margin: 22px 0 8px; }
+.qresult { margin-top: 8px; }
+
+/* ── 내 파일 · 테이블 ────────────────────────────── */
+.dropzone {
+  display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center;
+  border: 2px dashed var(--border); border-radius: var(--radius); padding: 30px 16px; cursor: pointer;
+  transition: .2s ease;
+}
+.dropzone:hover, .dropzone.over { border-color: var(--accent); background: var(--surface-hover); }
+#upload-list { margin-top: 16px; }
+table.cmp { border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+table.cmp th, table.cmp td { border: 1px solid var(--border); padding: 6px 12px; text-align: right; }
+table.cmp th { background: var(--code-bg); font-weight: 600; }
+.mark { font-weight: 700; text-align: center !important; }
+.mark.ok { color: var(--success); }
+.mark.err { color: var(--danger); }
+.tcard .rows { color: var(--muted); font-variant-numeric: tabular-nums; }
+.tcard .cols { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 2px; }
+
+@media (max-width: 560px) {
+  dl.basis { grid-template-columns: 1fr; }
+  .panel, .qcard { padding: 16px; }
+}
+
+/* ── 확인 요함 (결과 표 위 빨간 상자) ── */
+.alert-box {
+  color: var(--danger);
+  background: #FDEEF0;
+  border: 1px solid #F5C2C9;
+  border-left: 4px solid var(--danger);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+.alert-title { display: block; font-weight: 700; }
+.alert-box ul { margin: 4px 0 0; padding-left: 20px; }
+.badge.danger { color: var(--danger); background: #FDEEF0; }
+
+/* ── 준비된 질문 메모 (한 줄씩) ── */
+.qnote { margin: 6px 0 4px; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.qnote li + li { margin-top: 2px; }
