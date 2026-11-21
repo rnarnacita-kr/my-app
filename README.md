@@ -21,5 +21,6 @@
 ## Vercel에 배포하기
 
 - 이 폴더를 그대로 배포합니다. 루트의 파일은 정적 파일로, `api/sql.py` · `api/why.py` 는 Python 함수로 올라갑니다(`_` 로 시작하는 파일은 함수가 아니라 공통 모듈).
-- Vercel 프로젝트의 Environment Variables 에 `GEMINI_API_KEY`(필수), `GEMINI_MODEL`(선택)을 넣습니다.
+- Vercel 프로젝트의 Environment Variables 에 `GEMINI_API_KEY`(필수), `GEMINI_MODEL`(선택), `GEMINI_FALLBACK_MODEL`(선택)을 넣습니다.
+- Gemini 가 붐비면(503 · 429 등) 잠깐 쉬었다가 최대 3번 다시 시도합니다. `GEMINI_FALLBACK_MODEL` 을 넣으면 그래도 안 될 때 그 모델로 한 번 더 시도합니다(모델이 바뀌면 비용과 답이 달라질 수 있습니다).
 - `.vercelignore` 로 `tools/` · `.env` · `다음달/` 은 배포에서 빠집니다. `data/` 는 가상 데이터라 포함합니다.
