@@ -6,6 +6,7 @@
 """
 import json
 import sys
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -90,4 +91,6 @@ def handle(payload):
     }
 
 
-handler = _http.make_handler(handle)  # Vercel Python 런타임 진입점
+class handler(BaseHTTPRequestHandler):  # Vercel Python 런타임 진입점
+    def do_POST(self):
+        _http.respond(self, handle)

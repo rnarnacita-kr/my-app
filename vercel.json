@@ -1,7 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/*.py": {
+    "api/sql.py": {
+      "includeFiles": "{schema.json,sqlguard_rules.json}",
+      "maxDuration": 60
+    },
+    "api/why.py": {
       "includeFiles": "{schema.json,sqlguard_rules.json}",
       "maxDuration": 60
     }
