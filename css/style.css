@@ -239,3 +239,9 @@ table.cmp th { background: var(--code-bg); font-weight: 600; }
 /* ── 준비된 질문 메모 (한 줄씩) ── */
 .qnote { margin: 6px 0 4px; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .qnote li + li { margin-top: 2px; }
+
+/* ── 확인 요함 상자 안 내려받기 단추 ── */
+.alert-actions { margin-top: 10px; }
+.alert-actions button { background: #FFFFFF; border-color: #F5C2C9; color: var(--danger); font-size: 13px; padding: 7px 12px; }
+.alert-actions button:hover:not(:disabled) { border-color: var(--danger); }
+.alert-actions .msg { color: var(--muted); }

@@ -2,8 +2,7 @@
 // 파일 내용은 브라우저 밖으로 나가지 않는다. 새로고침하면 사라진다.
 import * as db from "./db.js";
 import { tableEl, alertEl } from "./why.js";
-
-const SHEETJS_URL = "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
+import { SHEETJS_URL } from "./export.js";
 const PREVIEW_ROWS = 20;
 
 /** 이번 세션에 올린 테이블: 이름(소문자) → {name, file, columns, row_count} */

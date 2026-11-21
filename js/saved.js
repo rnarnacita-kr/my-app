@@ -3,6 +3,7 @@
 import * as db from "./db.js";
 import * as guard from "./sqlguard.js";
 import { tableEl, alertEl } from "./why.js";
+import { downloadCsv, downloadXlsx } from "./export.js";
 
 const STORE_KEY = "my-app.saved-questions.v1";
 let presets = [];
@@ -158,17 +159,19 @@ const OPS = {
 };
 const LIST_MAX = 12;
 
-function alertItems(alert, res) {
-  if (!alert) return [];
+/** 확인 조건에 걸린 행과 상자에 쓸 문장. { items: [...], rows: [...] } */
+function alertMatch(alert, res) {
+  const none = { items: [], rows: [] };
+  if (!alert) return none;
   const idx = (name) => res.columns.findIndex((c) => c.name === name);
   let rows = res.rows;
   if (alert.where) {
     const i = idx(alert.where.col);
     const op = OPS[alert.where.op];
-    if (i < 0 || !op) return [`확인 조건의 컬럼(${alert.where.col})이나 비교(${alert.where.op})를 결과에서 찾지 못했습니다`];
+    if (i < 0 || !op) return { items: [`확인 조건의 컬럼(${alert.where.col})이나 비교(${alert.where.op})를 결과에서 찾지 못했습니다`], rows: [] };
     rows = rows.filter((r) => op(r[i], alert.where.value));
   }
-  if (rows.length < (alert.min_rows ?? 1)) return [];
+  if (rows.length < (alert.min_rows ?? 1)) return none;
   let sum = "";
   const si = alert.sum_col ? idx(alert.sum_col) : -1;
   if (si >= 0) sum = rows.reduce((a, r) => a + (Number(r[si]) || 0), 0).toLocaleString("ko-KR");
@@ -178,10 +181,39 @@ function alertItems(alert, res) {
     const items = rows.map((r) => li.map((i) => r[i]).join(" "));
     list = items.slice(0, LIST_MAX).join(", ") + (items.length > LIST_MAX ? ` 외 ${items.length - LIST_MAX}개` : "");
   }
-  return [String(alert.message || "확인할 결과가 있습니다")
+  const items = [String(alert.message || "확인할 결과가 있습니다")
     .replaceAll("{rows}", rows.length.toLocaleString("ko-KR"))
     .replaceAll("{sum}", sum)
     .replaceAll("{list}", list)];
+  return { items, rows };
+}
+
+/** «확인 요함» 상자 안에 틀린 값 내려받기 단추 (CSV · 엑셀) */
+function addDownloadButtons(box, q, columns, rows) {
+  const bar = el("div", "row alert-actions");
+  const name = `${q.name}_틀린값`;
+  const msg = el("span", "msg");
+  const csv = el("button", "", `틀린 값 CSV 내려받기 (${rows.length.toLocaleString("ko-KR")}행)`);
+  csv.className = "dl-csv";
+  csv.addEventListener("click", () => {
+    const f = downloadCsv(name, columns, rows);
+    msg.textContent = `내려받음: ${f}`;
+  });
+  const xlsx = el("button", "", "틀린 값 엑셀 내려받기");
+  xlsx.className = "dl-xlsx";
+  xlsx.addEventListener("click", async () => {
+    xlsx.disabled = true;
+    try {
+      const f = await downloadXlsx(name, columns, rows);
+      msg.textContent = `내려받음: ${f}`;
+    } catch (e) {
+      msg.textContent = "엑셀을 만들지 못했습니다 — " + e.message;
+    } finally {
+      xlsx.disabled = false;
+    }
+  });
+  bar.append(csv, xlsx, msg);
+  box.appendChild(bar);
 }
 
 async function recalc(q, meta, out, btn) {
@@ -201,8 +233,12 @@ async function recalc(q, meta, out, btn) {
     const at = new Date().toLocaleString("ko-KR", { hour12: false });
     meta.className = "msg ok";
     meta.textContent = `계산한 시각 ${at} · ${res.rows.length.toLocaleString("ko-KR")}행 · 읽은 테이블 ${tables.join(", ")}`;
-    const box = alertEl(alertItems(q.alert, res));
-    if (box) out.appendChild(box); // 표보다 먼저
+    const m = alertMatch(q.alert, res);
+    const box = alertEl(m.items);
+    if (box) {
+      if (m.rows.length) addDownloadButtons(box, q, res.columns, m.rows);
+      out.appendChild(box); // 표보다 먼저
+    }
     out.appendChild(tableEl(res, 5000)); // 거래 목록형 질문도 다 보이게
   } catch (e) {
     meta.className = "msg err";
