@@ -5,6 +5,9 @@ import * as guard from "./sqlguard.js";
 const AI_ROW_LIMIT = 50;
 let SCHEMA = null;
 
+/** 불러온 schema.json (테이블 탭이 그레인 · 컬럼 뜻을 보여 줄 때 쓴다) */
+export const getSchema = () => SCHEMA;
+
 export async function loadSchema() {
   const res = await fetch("schema.json");
   if (!res.ok) throw new Error("schema.json 을 읽지 못했습니다");
