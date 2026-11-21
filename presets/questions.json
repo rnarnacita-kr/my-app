@@ -59,17 +59,19 @@
         "수수료율: 자사몰 3% · 오픈마켓A 11% · 오픈마켓B 12% · 소셜커머스 20% · 종합몰 13% (데이터 사전 그대로).",
         "실제 차감액 = 출고분 결제금액 − 실제 입금액.",
         "수수료 차액 = 실제 차감액 − 예상 수수료 (+면 예상보다 더 떼임).",
-        "실제 공제 차이는 «차액 거래 수»(거래 하나에서 10원 이상 차이)로 본다.",
-        "차액 거래 수가 0인 달의 작은 수수료 차액(월 −126 ~ +367원)은 반올림 끝전이다.",
+        "사유: 10원 이상 다른 거래가 있으면 그 거래들의 입금액이 예상 정산액보다 몇 % 적은지(추가 공제 n%), 없으면 «반올림 끝전». 원인(계약 변경 등)은 데이터로 확인할 수 없어 적지 않는다.",
+        "실제 공제 차이는 거래 하나에서 10원 이상 다른 것만 센다. 사유가 «추가 공제» · «초과 입금»인 칸이 확인 대상이다.",
+        "사유가 «반올림 끝전»인 칸의 작은 수수료 차액(월 −126 ~ +367원)은 반올림 끝전이다.",
         "쇼핑몰은 입금액을 10원 단위로 은행가 반올림(끝이 5원이면 짝수 쪽)해 보낸다. 2025년 정상 거래 33,862건 모두 이 규칙으로 재현된다.",
         "거래당 끝전은 최대 ±5원이고, 월 수수료 차액은 그 끝전의 합이다.",
-        "소셜커머스 1~6월이 0원인 것은 100원 단위 결제금액 × 80%가 늘 10원 단위로 떨어져 끝전이 없기 때문이다."
+        "소셜커머스 1~6월이 0원인 것은 100원 단위 결제금액 × 80%가 늘 10원 단위로 떨어져 끝전이 없기 때문이다.",
+        "«틀린 값 내려받기»에는 수수료 차액이 0이 아닌 칸을 모두 넣는다(반올림 끝전 포함). 빨간 상자는 «추가 공제» · «초과 입금» 칸만 센다."
       ],
       "alert": {
         "where": {
-          "col": "차액 거래 수",
-          "op": ">",
-          "value": 0
+          "col": "사유",
+          "op": "~",
+          "value": "^(추가 공제|초과 입금)"
         },
         "min_rows": 1,
         "sum_col": "수수료 차액",
@@ -77,9 +79,14 @@
           "쇼핑몰",
           "월"
         ],
-        "message": "수수료 차액이 발생한 쇼핑몰·월이 {rows}개 있습니다 (수수료 차액 합계 {sum}원): {list}"
+        "message": "수수료 차액이 발생한 쇼핑몰·월이 {rows}개 있습니다 (수수료 차액 합계 {sum}원): {list}",
+        "download_where": {
+          "col": "수수료 차액",
+          "op": "!=",
+          "value": 0
+        }
       },
-      "sql": "WITH fee(mall, rate) AS (\n  VALUES ('자사몰', 0.03), ('오픈마켓A', 0.11), ('오픈마켓B', 0.12), ('소셜커머스', 0.20), ('종합몰', 0.13)\n), t AS (\n  SELECT o.mall, st.settle_date,\n         o.payment_amount * s.ship_qty / o.qty AS shipped_pay,\n         f.rate,\n         st.deposit_amount\n  FROM shipments s\n  JOIN mall_orders o ON o.order_no = s.order_no AND o.line_no = s.line_no\n  JOIN fee f ON f.mall = o.mall\n  JOIN mall_settlements st ON st.order_no = s.order_no AND st.line_no = s.line_no\n  WHERE st.settle_date >= DATE '2025-01-01' AND st.settle_date < DATE '2026-01-01'\n)\nSELECT strftime(settle_date, '%Y-%m') AS \"월\",\n       mall AS \"쇼핑몰\",\n       ROUND(SUM(shipped_pay)) AS \"출고분 결제금액\",\n       ROUND(SUM(shipped_pay * rate)) AS \"예상 수수료\",\n       ROUND(SUM(shipped_pay - deposit_amount)) AS \"실제 차감액\",\n       ROUND(SUM(shipped_pay - deposit_amount)) - ROUND(SUM(shipped_pay * rate)) AS \"수수료 차액\",\n       COUNT(*) FILTER (WHERE abs(shipped_pay - deposit_amount - shipped_pay * rate) >= 10) AS \"차액 거래 수\"\nFROM t\nGROUP BY 1, 2\nORDER BY 1, 2"
+      "sql": "WITH fee(mall, rate) AS (\n  VALUES ('자사몰', 0.03), ('오픈마켓A', 0.11), ('오픈마켓B', 0.12), ('소셜커머스', 0.20), ('종합몰', 0.13)\n), t AS (\n  SELECT o.mall, st.settle_date,\n         o.payment_amount * s.ship_qty / o.qty AS shipped_pay,\n         f.rate,\n         st.deposit_amount,\n         o.payment_amount * s.ship_qty / o.qty * (1 - f.rate) AS expected,\n         abs(st.deposit_amount - o.payment_amount * s.ship_qty / o.qty * (1 - f.rate)) >= 10 AS big\n  FROM shipments s\n  JOIN mall_orders o ON o.order_no = s.order_no AND o.line_no = s.line_no\n  JOIN fee f ON f.mall = o.mall\n  JOIN mall_settlements st ON st.order_no = s.order_no AND st.line_no = s.line_no\n  WHERE st.settle_date >= DATE '2025-01-01' AND st.settle_date < DATE '2026-01-01'\n)\nSELECT strftime(settle_date, '%Y-%m') AS \"월\",\n       mall AS \"쇼핑몰\",\n       ROUND(SUM(shipped_pay)) AS \"출고분 결제금액\",\n       ROUND(SUM(shipped_pay * rate)) AS \"예상 수수료\",\n       ROUND(SUM(shipped_pay - deposit_amount)) AS \"실제 차감액\",\n       ROUND(SUM(shipped_pay - deposit_amount)) - ROUND(SUM(shipped_pay * rate)) AS \"수수료 차액\",\n       CASE\n         WHEN COUNT(*) FILTER (WHERE big) > 0 AND SUM(deposit_amount) FILTER (WHERE big) < SUM(expected) FILTER (WHERE big)\n           THEN '추가 공제 ' || CAST(ROUND(100 * (1 - SUM(deposit_amount) FILTER (WHERE big) / SUM(expected) FILTER (WHERE big)), 1) AS VARCHAR) || '%'\n         WHEN COUNT(*) FILTER (WHERE big) > 0\n           THEN '초과 입금 ' || CAST(ROUND(100 * (SUM(deposit_amount) FILTER (WHERE big) / SUM(expected) FILTER (WHERE big) - 1), 1) AS VARCHAR) || '%'\n         WHEN ROUND(SUM(shipped_pay - deposit_amount)) - ROUND(SUM(shipped_pay * rate)) <> 0 THEN '반올림 끝전'\n         ELSE ''\n       END AS \"사유\"\nFROM t\nGROUP BY 1, 2\nORDER BY 1, 2"
     },
     {
       "id": "preset-settlement-mismatch",

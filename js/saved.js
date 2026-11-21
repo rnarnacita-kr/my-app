@@ -156,6 +156,7 @@ const OPS = {
   "<=": (a, b) => Number(a) <= Number(b),
   "=": (a, b) => String(a) === String(b),
   "!=": (a, b) => String(a) !== String(b),
+  "~": (a, b) => new RegExp(String(b)).test(String(a ?? "")),   // 글자 패턴(정규식)에 맞으면
 };
 const LIST_MAX = 12;
 
@@ -186,6 +187,16 @@ function alertMatch(alert, res) {
     .replaceAll("{sum}", sum)
     .replaceAll("{list}", list)];
   return { items, rows };
+}
+
+/** alert.download_where = { col, op, value } 가 있으면 그 조건에 맞는 행, 없으면 null */
+function downloadRows(alert, res) {
+  const w = alert && alert.download_where;
+  if (!w) return null;
+  const i = res.columns.findIndex((c) => c.name === w.col);
+  const op = OPS[w.op];
+  if (i < 0 || !op) return null;
+  return res.rows.filter((r) => op(r[i], w.value));
 }
 
 /** «확인 요함» 상자 안에 틀린 값 내려받기 단추 (CSV · 엑셀) */
@@ -236,7 +247,9 @@ async function recalc(q, meta, out, btn) {
     const m = alertMatch(q.alert, res);
     const box = alertEl(m.items);
     if (box) {
-      if (m.rows.length) addDownloadButtons(box, q, res.columns, m.rows);
+      // 내려받는 행은 따로 넓힐 수 있다(alert.download_where). 없으면 상자에 걸린 행 그대로.
+      const dlRows = downloadRows(q.alert, res) ?? m.rows;
+      if (dlRows.length) addDownloadButtons(box, q, res.columns, dlRows);
       out.appendChild(box); // 표보다 먼저
     }
     out.appendChild(tableEl(res, 5000)); // 거래 목록형 질문도 다 보이게
